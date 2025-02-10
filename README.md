@@ -74,7 +74,7 @@ package main
 import (
     "fmt"
     "reflect"
-    "github.com/yourusername/monkeypatch-go"
+    "github.com/TFMV/monkeypatch-go"
 )
 
 type Person struct{}
