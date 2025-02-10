@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
+	"testing"
 	"unsafe"
+
+	monkey "github.com/TFMV/monkeypatch-go"
 )
 
 var (
@@ -169,4 +172,139 @@ func replaceFunction(targetPtr uintptr, newPtr uintptr) []byte {
 // copyToLocation copies the given bytes to restore the function.
 func copyToLocation(targetPtr uintptr, data []byte) {
 	copy((*[100]byte)(unsafe.Pointer(targetPtr))[:], data)
+}
+
+// Original function
+func sayHello() string {
+	return "Hello, World!"
+}
+
+// Replacement function
+func sayGoodbye() string {
+	return "Goodbye, World!"
+}
+
+// Define a struct with a method
+type Greeter struct{}
+
+func (g Greeter) Greet() string {
+	return "Hello"
+}
+
+// Replacement method
+func (g Greeter) GreetReplacement() string {
+	return "Hi"
+}
+
+func TestPatchFunction(t *testing.T) {
+	// Ensure original function works
+	original := sayHello()
+	if original != "Hello, World!" {
+		t.Fatalf("Expected 'Hello, World!', got '%s'", original)
+	}
+
+	// Patch the sayHello function
+	guard, err := monkey.Patch(sayHello, sayGoodbye)
+	if err != nil {
+		t.Fatalf("Failed to patch function: %v", err)
+	}
+	defer guard.Unpatch()
+
+	// Test that sayHello now returns "Goodbye, World!"
+	patched := sayHello()
+	if patched != "Goodbye, World!" {
+		t.Fatalf("Expected 'Goodbye, World!', got '%s'", patched)
+	}
+}
+
+func TestUnpatch(t *testing.T) {
+	// Patch the sayHello function
+	guard, err := monkey.Patch(sayHello, sayGoodbye)
+	if err != nil {
+		t.Fatalf("Failed to patch function: %v", err)
+	}
+
+	// Unpatch the function
+	guard.Unpatch()
+
+	// Test that sayHello returns the original value
+	result := sayHello()
+	if result != "Hello, World!" {
+		t.Fatalf("Expected 'Hello, World!', got '%s'", result)
+	}
+}
+
+func TestPatchInstanceMethod(t *testing.T) {
+	var greeter Greeter
+
+	// Ensure original method works
+	original := greeter.Greet()
+	if original != "Hello" {
+		t.Fatalf("Expected 'Hello', got '%s'", original)
+	}
+
+	// Patch the Greet method
+	guard, err := monkey.PatchInstanceMethod(reflect.TypeOf(greeter), "Greet", Greeter.GreetReplacement)
+	if err != nil {
+		t.Fatalf("Failed to patch instance method: %v", err)
+	}
+	defer guard.Unpatch()
+
+	// Test that Greet now returns "Hi"
+	patched := greeter.Greet()
+	if patched != "Hi" {
+		t.Fatalf("Expected 'Hi', got '%s'", patched)
+	}
+}
+
+func TestUnpatchInstanceMethod(t *testing.T) {
+	var greeter Greeter
+
+	// Patch the Greet method
+	guard, err := monkey.PatchInstanceMethod(reflect.TypeOf(greeter), "Greet", Greeter.GreetReplacement)
+	if err != nil {
+		t.Fatalf("Failed to patch instance method: %v", err)
+	}
+
+	// Unpatch the method
+	guard.Unpatch()
+
+	// Test that Greet returns the original value
+	result := greeter.Greet()
+	if result != "Hello" {
+		t.Fatalf("Expected 'Hello', got '%s'", result)
+	}
+}
+
+func TestUnpatchAll(t *testing.T) {
+	// Patch multiple functions
+	guard1, err := monkey.Patch(sayHello, sayGoodbye)
+	if err != nil {
+		t.Fatalf("Failed to patch sayHello: %v", err)
+	}
+
+	var greeter Greeter
+	guard2, err := monkey.PatchInstanceMethod(reflect.TypeOf(greeter), "Greet", Greeter.GreetReplacement)
+	if err != nil {
+		t.Fatalf("Failed to patch Greeter.Greet: %v", err)
+	}
+
+	// Unpatch all
+	monkey.UnpatchAll()
+
+	// Test that sayHello returns the original value
+	result := sayHello()
+	if result != "Hello, World!" {
+		t.Fatalf("Expected 'Hello, World!', got '%s'", result)
+	}
+
+	// Test that Greeter.Greet returns the original value
+	greetResult := greeter.Greet()
+	if greetResult != "Hello" {
+		t.Fatalf("Expected 'Hello', got '%s'", greetResult)
+	}
+
+	// Clean up guards
+	guard1.Unpatch()
+	guard2.Unpatch()
 }
