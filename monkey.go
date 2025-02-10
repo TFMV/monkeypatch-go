@@ -156,8 +156,17 @@ func validateFuncPair(target, replacement reflect.Value) error {
 	return nil
 }
 
+// makeWritable makes a memory region writable.
+func makeWritable(addr uintptr, length int) error {
+	return makeWritableDarwin(addr, length)
+}
+
 // replaceFunction replaces the function in memory.
 func replaceFunction(targetPtr uintptr, newPtr uintptr) []byte {
+	if err := makeWritable(targetPtr, 100); err != nil {
+		panic(err)
+	}
+
 	oldBytes := make([]byte, 100)
 	copy(oldBytes, (*[100]byte)(unsafe.Pointer(targetPtr))[:])
 
@@ -168,5 +177,8 @@ func replaceFunction(targetPtr uintptr, newPtr uintptr) []byte {
 
 // copyToLocation copies the given bytes to restore the function.
 func copyToLocation(targetPtr uintptr, data []byte) {
+	if err := makeWritable(targetPtr, len(data)); err != nil {
+		panic(err)
+	}
 	copy((*[100]byte)(unsafe.Pointer(targetPtr))[:], data)
 }

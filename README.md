@@ -14,6 +14,16 @@ MonkeyPatch-Go is a lightweight Go library that allows runtime function patching
 
 Monkey patching relies on unsafe operations and may break across different Go versions due to compiler optimizations. Use with caution.
 
+## Requirements
+
+### macOS (especially Apple Silicon)
+
+- System Integrity Protection (SIP) must be disabled to modify executable memory
+- To disable SIP:
+  1. Restart in Recovery Mode (hold power button during startup)
+  2. Open Terminal and run: `csrutil disable`
+  3. Restart
+
 ## Installation
 
 ```bash
